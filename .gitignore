@@ -1,0 +1,10 @@
+.env
+.vscode
+.cache
+*.txt
+*.out
+auth
+!cmd/auth
+*.sh
+temp
+
