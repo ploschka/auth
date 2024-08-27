@@ -1,6 +1,7 @@
 package model
 
 import (
+	"database/sql"
 	"os"
 
 	"gorm.io/driver/postgres"
@@ -9,8 +10,9 @@ import (
 )
 
 type User struct {
-	guid  string `gorm:"primaryKey"`
-	admin bool
+	Guid       string `gorm:"primaryKey"`
+	Admin      bool
+	RefreshKey sql.NullString
 }
 
 var db *gorm.DB
