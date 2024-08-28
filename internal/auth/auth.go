@@ -1,8 +1,11 @@
 package auth
 
 import (
+	"crypto/aes"
+	"crypto/cipher"
 	_ "crypto/sha512"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"os"
 	"time"
@@ -13,9 +16,8 @@ import (
 )
 
 const (
-	hashCost             int           = 15
-	accessTokenDuration  time.Duration = 1 * time.Hour
-	refreshTokenDuration time.Duration = 24 * time.Hour
+	hashCost            int           = 15
+	accessTokenDuration time.Duration = 1 * time.Hour
 )
 
 var (
@@ -27,30 +29,36 @@ var (
 var (
 	signKey       []byte
 	encryptionKey []byte
-	hashKey       []byte
+
+	gcm cipher.AEAD
 )
 
 type claims struct {
 	jwt.RegisteredClaims
 	Ip    string `json:"ip"`
 	Admin bool   `json:"admin"`
-	GUID  string `json:"guid"`
 }
 
 type refreshToken struct {
-	Ip       string `json:"ip"`
-	IssuedAt int64  `json:"iat"`
-	GUID     string `json:"guid"`
+	Ip        string `json:"ip"`
+	IssuedAt  int64  `json:"iat"`
+	GUID      string `json:"guid"`
+	Signature string `json:"sign"`
 }
 
 // TODO
-func (tok refreshToken) encrypt() ([]byte, error) {
+func EncryptToken(token []byte) (string, error) {
+	return "", nil
+}
+
+// TODO
+func decryptToken(token string) ([]byte, error) {
 	return nil, nil
 }
 
 // TODO
-func decrypt(encrypted []byte) (tok refreshToken, err error) {
-	return
+func HashToken(token []byte) (string, error) {
+	return "", nil
 }
 
 func init() {
@@ -64,36 +72,39 @@ func init() {
 		panic("ENCRYPTION_KEY is undefined or emty")
 	}
 
-	base64HashKey, ok := os.LookupEnv("HASH_KEY")
-	if !ok || len(base64EncryptionKey) == 0 {
-		panic("HASH_KEY is undefined or emty")
+	var err error
+
+	signKey, err = base64.StdEncoding.DecodeString(base64SignKey)
+	if err != nil {
+		panic(err)
 	}
 
-	var err error
-	var tempErr error
+	encryptionKey, err = base64.StdEncoding.DecodeString(base64EncryptionKey)
+	if err != nil {
+		panic(err)
+	}
 
-	signKey, tempErr = base64.StdEncoding.DecodeString(base64SignKey)
-	err = errors.Join(err, tempErr)
+	if len(encryptionKey) != 32 {
+		panic(errors.New("encryption key length is not 32 bytes"))
+	}
 
-	encryptionKey, tempErr = base64.StdEncoding.DecodeString(base64EncryptionKey)
-	err = errors.Join(err, tempErr)
+	var block cipher.Block
+	block, err = aes.NewCipher(encryptionKey)
+	if err != nil {
+		panic(err)
+	}
 
-	hashKey, tempErr = base64.StdEncoding.DecodeString(base64HashKey)
-	err = errors.Join(err, tempErr)
-
+	gcm, err = cipher.NewGCM(block)
 	if err != nil {
 		panic(err)
 	}
 }
 
-func generateTokens(ip string, user model.User) (access string, refresh string, err error) {
-	var tempErr error = nil
-
+func GenerateTokens(ip string, user model.User) (access string, refresh []byte, err error) {
 	currTime := time.Now()
 	accessExp := currTime.Add(accessTokenDuration)
 
 	claims := claims{
-		GUID:  user.Guid,
 		Admin: user.Admin,
 		Ip:    ip,
 		RegisteredClaims: jwt.RegisteredClaims{
@@ -102,19 +113,40 @@ func generateTokens(ip string, user model.User) (access string, refresh string, 
 		},
 	}
 
-	access, tempErr = jwt.NewWithClaims(jwt.SigningMethodHS512, claims).SignedString(signKey)
-	err = errors.Join(err, tempErr)
+	var aToken *jwt.Token
+	var strtok string
 
-	refTok := refreshToken{
-		Ip:       ip,
-		IssuedAt: currTime.Unix(),
-		GUID:     user.Guid,
+	aToken = jwt.NewWithClaims(jwt.SigningMethodHS512, claims)
+
+	strtok, err = aToken.SigningString()
+	if err != nil {
+		return
 	}
 
-	return
+	var signature []byte
+	signature, err = aToken.Method.Sign(strtok, signKey)
+	if err != nil {
+		return
+	}
+
+	encodedSignature := aToken.EncodeSegment(signature)
+
+	refTok := refreshToken{
+		Ip:        ip,
+		IssuedAt:  currTime.Unix(),
+		GUID:      user.Guid,
+		Signature: encodedSignature,
+	}
+
+	refJson, err := json.Marshal(refTok)
+	if err != nil {
+		return
+	}
+
+	return strtok + "." + encodedSignature, refJson, nil
 }
 
 // TODO
-func RefreshOrGenerate(ip string, user model.User) (string, string, error) {
-	return "", "", nil
+func RefreshTokens(ip string, user model.User) (string, []byte, bool, error) {
+	return "", nil, false, nil
 }
