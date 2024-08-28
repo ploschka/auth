@@ -39,26 +39,11 @@ type claims struct {
 	Admin bool   `json:"admin"`
 }
 
-type refreshToken struct {
+type RefreshToken struct {
 	Ip        string `json:"ip"`
 	IssuedAt  int64  `json:"iat"`
 	GUID      string `json:"guid"`
 	Signature string `json:"sign"`
-}
-
-// TODO
-func EncryptToken(token []byte) (string, error) {
-	return "", nil
-}
-
-// TODO
-func decryptToken(token string) ([]byte, error) {
-	return nil, nil
-}
-
-// TODO
-func HashToken(token []byte) (string, error) {
-	return "", nil
 }
 
 func init() {
@@ -100,6 +85,31 @@ func init() {
 	}
 }
 
+// TODO
+func EncryptToken(token []byte) ([]byte, error) {
+	return nil, nil
+}
+
+// TODO
+func DecryptToken(token string) (*RefreshToken, error) {
+	return nil, nil
+}
+
+// TODO
+func HashToken(token []byte) ([]byte, error) {
+	return nil, nil
+}
+
+// TODO
+func CheckPair(access string, refresh *RefreshToken) bool {
+	return false
+}
+
+// TODO
+func Validate(tok *RefreshToken, hash []byte) bool {
+	return false
+}
+
 func GenerateTokens(ip string, user model.User) (access string, refresh []byte, err error) {
 	currTime := time.Now()
 	accessExp := currTime.Add(accessTokenDuration)
@@ -131,7 +141,7 @@ func GenerateTokens(ip string, user model.User) (access string, refresh []byte, 
 
 	encodedSignature := aToken.EncodeSegment(signature)
 
-	refTok := refreshToken{
+	refTok := RefreshToken{
 		Ip:        ip,
 		IssuedAt:  currTime.Unix(),
 		GUID:      user.Guid,
@@ -144,9 +154,4 @@ func GenerateTokens(ip string, user model.User) (access string, refresh []byte, 
 	}
 
 	return strtok + "." + encodedSignature, refJson, nil
-}
-
-// TODO
-func RefreshTokens(ip string, user model.User) (string, []byte, bool, error) {
-	return "", nil, false, nil
 }
