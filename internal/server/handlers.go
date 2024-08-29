@@ -71,6 +71,16 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
 	user.RefreshKey.String = base64.RawURLEncoding.EncodeToString(hashed)
 	user.RefreshKey.Valid = true
 
+	q2 := func(d *gorm.DB) *gorm.DB {
+		return d.Save(&user)
+	}
+
+	result = q2(db)
+	if result.Error != nil {
+		internalServerError(w)
+		return
+	}
+
 	respJson, err := json.Marshal(resp)
 	if err != nil {
 		internalServerError(w)
@@ -196,6 +206,16 @@ func refreshHandler(w http.ResponseWriter, r *http.Request) {
 
 	user.RefreshKey.String = base64.RawURLEncoding.EncodeToString(hashed)
 	user.RefreshKey.Valid = true
+
+	q2 := func(d *gorm.DB) *gorm.DB {
+		return d.Save(&user)
+	}
+
+	result = q2(db)
+	if result.Error != nil {
+		internalServerError(w)
+		return
+	}
 
 	respJson, err := json.Marshal(resp)
 	if err != nil {
