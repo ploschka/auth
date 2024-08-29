@@ -3,15 +3,17 @@ package auth
 import (
 	"crypto/aes"
 	"crypto/cipher"
+	"crypto/rand"
 	_ "crypto/sha512"
 	"encoding/base64"
 	"errors"
+	"io"
 	"os"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/ploschka/auth/internal/model"
-	_ "golang.org/x/crypto/bcrypt"
+	"golang.org/x/crypto/bcrypt"
 )
 
 const (
@@ -84,29 +86,63 @@ func init() {
 	}
 }
 
-// TODO
 func EncryptToken(token []byte) ([]byte, error) {
-	return nil, nil
+	nonce := make([]byte, gcm.NonceSize())
+	_, err := io.ReadFull(rand.Reader, nonce)
+	if err != nil {
+		return nil, err
+	}
+
+	return gcm.Seal(nonce, nonce, token, nil), nil
 }
 
-// TODO
 func DecryptToken(token []byte) ([]byte, error) {
-	return nil, nil
+	nonceSize := gcm.NonceSize()
+	if len(token) < nonceSize {
+		return nil, errors.New("encrypted text invalid length")
+	}
+
+	nonce, ciphertext := token[:nonceSize], token[nonceSize:]
+	return gcm.Open(nil, nonce, ciphertext, nil)
 }
 
-// TODO
 func HashToken(token []byte) ([]byte, error) {
-	return nil, nil
+	return bcrypt.GenerateFromPassword(token, hashCost)
 }
 
-// TODO
 func CheckPair(access string, refresh *RefreshToken) bool {
-	return false
+	keyfunc := func(_ *jwt.Token) (interface{}, error) {
+		return signKey, nil
+	}
+
+	token, err := jwt.ParseWithClaims(access, &claims{}, keyfunc, jwt.WithValidMethods(allowedMethods[:]))
+	if err != nil {
+		return false
+	}
+
+	myclaims, ok := token.Claims.(claims)
+	if !ok {
+		return false
+	}
+
+	if myclaims.Ip != refresh.Ip {
+		return false
+	}
+
+	if base64.RawURLEncoding.EncodeToString(token.Signature) != refresh.Signature {
+		return false
+	}
+
+	if myclaims.IssuedAt.Unix() != refresh.IssuedAt {
+		return false
+	}
+
+	return true
 }
 
-// TODO
 func Validate(tok []byte, hash []byte) bool {
-	return false
+	err := bcrypt.CompareHashAndPassword(hash, tok)
+	return err == nil
 }
 
 func GenerateTokens(ip string, user model.User) (access string, refresh *RefreshToken, err error) {
