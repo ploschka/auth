@@ -90,7 +90,7 @@ func EncryptToken(token []byte) ([]byte, error) {
 }
 
 // TODO
-func DecryptToken(token string) (*RefreshToken, error) {
+func DecryptToken(token []byte) ([]byte, error) {
 	return nil, nil
 }
 
@@ -105,7 +105,7 @@ func CheckPair(access string, refresh *RefreshToken) bool {
 }
 
 // TODO
-func Validate(tok *RefreshToken, hash []byte) bool {
+func Validate(tok []byte, hash []byte) bool {
 	return false
 }
 
