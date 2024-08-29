@@ -9,12 +9,12 @@ type route struct {
 
 var routes = [...]route{
 	{
-		path:    "/auth",
-		handler: auth,
+		path:    "POST /auth",
+		handler: authHandler,
 	},
 	{
-		path:    "/refresh",
-		handler: refresh,
+		path:    "POST /refresh",
+		handler: refreshHandler,
 	},
 }
 

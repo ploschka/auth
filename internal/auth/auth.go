@@ -5,7 +5,6 @@ import (
 	"crypto/cipher"
 	_ "crypto/sha512"
 	"encoding/base64"
-	"encoding/json"
 	"errors"
 	"os"
 	"time"
@@ -110,7 +109,7 @@ func Validate(tok *RefreshToken, hash []byte) bool {
 	return false
 }
 
-func GenerateTokens(ip string, user model.User) (access string, refresh []byte, err error) {
+func GenerateTokens(ip string, user model.User) (access string, refresh *RefreshToken, err error) {
 	currTime := time.Now()
 	accessExp := currTime.Add(accessTokenDuration)
 
@@ -141,17 +140,12 @@ func GenerateTokens(ip string, user model.User) (access string, refresh []byte, 
 
 	encodedSignature := aToken.EncodeSegment(signature)
 
-	refTok := RefreshToken{
+	refTok := &RefreshToken{
 		Ip:        ip,
 		IssuedAt:  currTime.Unix(),
 		GUID:      user.Guid,
 		Signature: encodedSignature,
 	}
 
-	refJson, err := json.Marshal(refTok)
-	if err != nil {
-		return
-	}
-
-	return strtok + "." + encodedSignature, refJson, nil
+	return strtok + "." + encodedSignature, refTok, nil
 }

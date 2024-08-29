@@ -12,6 +12,7 @@ import (
 type User struct {
 	Guid       string `gorm:"primaryKey"`
 	Admin      bool
+	Email      string
 	RefreshKey sql.NullString
 }
 
