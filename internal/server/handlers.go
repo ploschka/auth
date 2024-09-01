@@ -48,7 +48,8 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ip := r.RemoteAddr
-	ip, _, _ = strings.Cut(ip, ":")
+	slicedIp := strings.Split(ip, ":")
+	ip = strings.Join(slicedIp[:len(slicedIp)-1], ":")
 
 	access, refresh, err := auth.GenerateTokens(ip, user)
 	if err != nil {
@@ -145,7 +146,8 @@ func refreshHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ip := r.RemoteAddr
-	ip, _, _ = strings.Cut(ip, ":")
+	slicedIp := strings.Split(ip, ":")
+	ip = strings.Join(slicedIp[:len(slicedIp)-1], ":")
 
 	user := model.User{
 		Guid: refresh.GUID,
