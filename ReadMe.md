@@ -6,7 +6,7 @@
 
     ```sh
     POSTGRES_DB=auth_server # Имя базы данных
-    POSTGRES_PASSWORD=secret # Пароль полльзвателя базы данных
+    POSTGRES_PASSWORD=secret # Пароль пользователя базы данных
     POSTGRES_USER=app # Имя пользователя базы данных
     SIGN_KEY=c2VjcmV0X3NpZ25fa2V5 # Ключ подписи токенов в кодировке base64
     ENCRYPTION_KEY=bOVcHwoCIhSF5EM9gC15PAOY1KAm3i6h9lELYnh1BO4= # Ключ шифрования длиной 32 байта в кодировке base64
@@ -44,7 +44,7 @@
 3. Установить переменные окружения в командной оболочке
 
     ```sh
-    - DATABASE_LINK=host=127.0.0.1 user=app password=secret dbname=auth port=5432 sslmode=disable # URL подключения к базе данных для приложения
+    DATABASE_LINK=host=127.0.0.1 user=app password=secret dbname=auth port=5432 sslmode=disable # URL подключения к базе данных для приложения
     SIGN_KEY=c2VjcmV0X3NpZ25fa2V5 # Ключ подписи токенов в кодировке base64
     ENCRYPTION_KEY=bOVcHwoCIhSF5EM9gC15PAOY1KAm3i6h9lELYnh1BO4= # Ключ шифрования длиной 32 байта в кодировке base64
     ```
