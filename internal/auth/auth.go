@@ -4,6 +4,7 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
+	"crypto/sha512"
 	_ "crypto/sha512"
 	"encoding/base64"
 	"errors"
@@ -107,7 +108,13 @@ func DecryptToken(token []byte) ([]byte, error) {
 }
 
 func HashToken(token []byte) ([]byte, error) {
-	return bcrypt.GenerateFromPassword(token, hashCost)
+	hasher := sha512.New()
+	_, err := hasher.Write(token)
+	if err != nil {
+		return nil, err
+	}
+	sum := hasher.Sum(nil)
+	return bcrypt.GenerateFromPassword(sum, hashCost)
 }
 
 func CheckPair(access string, refresh *RefreshToken) bool {
@@ -140,9 +147,16 @@ func CheckPair(access string, refresh *RefreshToken) bool {
 	return true
 }
 
-func Validate(tok []byte, hash []byte) bool {
-	err := bcrypt.CompareHashAndPassword(hash, tok)
-	return err == nil
+func Validate(tok []byte, hash []byte) (bool, error) {
+	hasher := sha512.New()
+	_, err := hasher.Write(tok)
+	if err != nil {
+		return false, err
+	}
+	toksum := hasher.Sum(nil)
+
+	err = bcrypt.CompareHashAndPassword(hash, toksum)
+	return err == nil, nil
 }
 
 func GenerateTokens(ip string, user model.User) (access string, refresh *RefreshToken, err error) {

@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"os"
 
+	log "github.com/ploschka/auth/internal/logger"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -19,6 +20,7 @@ type User struct {
 var db *gorm.DB
 
 func init() {
+	log.Info("Model init start")
 	link, ok := os.LookupEnv("DATABASE_LINK")
 	if !ok {
 		panic("DATABASE_LINK environment variable is undefined")
@@ -30,7 +32,11 @@ func init() {
 	if err != nil {
 		panic("Failed to connect to database")
 	}
-	db.AutoMigrate(&User{})
+	err = db.AutoMigrate(&User{})
+	if err != nil {
+		panic(err)
+	}
+	log.Info("Model init ended")
 }
 
 func GetDB() *gorm.DB {

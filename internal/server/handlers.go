@@ -3,6 +3,7 @@ package server
 import (
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"strings"
@@ -13,10 +14,17 @@ import (
 	"gorm.io/gorm"
 )
 
+var (
+	ErrGuidLength         error = errors.New("Invalid guid length")
+	ErrInvalidTokenPair   error = errors.New("Invalid token pair")
+	ErrInvalidRefresh     error = errors.New("Invalid refresh token")
+	ErrNoRefreshAvailable error = errors.New("Refresh is not available for this user")
+)
+
 func authHandler(w http.ResponseWriter, r *http.Request) {
 	guid := r.URL.Query().Get("guid")
 	if len(guid) == 0 {
-		badRequest(w)
+		badRequest(w, ErrGuidLength)
 		return
 	}
 
@@ -32,7 +40,7 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
 
 	result := q(db)
 	if result.Error != nil {
-		badRequest(w)
+		badRequest(w, result.Error)
 		return
 	}
 
@@ -41,25 +49,25 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
 
 	access, refresh, err := auth.GenerateTokens(ip, user)
 	if err != nil {
-		internalServerError(w)
+		internalServerError(w, err)
 		return
 	}
 
 	refJson, err := json.Marshal(refresh)
 	if err != nil {
-		internalServerError(w)
+		internalServerError(w, err)
 		return
 	}
 
 	encrypted, err := auth.EncryptToken(refJson)
 	if err != nil {
-		internalServerError(w)
+		internalServerError(w, err)
 		return
 	}
 
 	hashed, err := auth.HashToken(refJson)
 	if err != nil {
-		internalServerError(w)
+		internalServerError(w, err)
 		return
 	}
 
@@ -77,19 +85,19 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
 
 	result = q2(db)
 	if result.Error != nil {
-		internalServerError(w)
+		internalServerError(w, result.Error)
 		return
 	}
 
 	respJson, err := json.Marshal(resp)
 	if err != nil {
-		internalServerError(w)
+		internalServerError(w, err)
 		return
 	}
 
 	_, err = w.Write(respJson)
 	if err != nil {
-		internalServerError(w)
+		internalServerError(w, err)
 		return
 	}
 }
@@ -97,7 +105,7 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
 func refreshHandler(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		internalServerError(w)
+		internalServerError(w, err)
 		return
 	}
 
@@ -105,19 +113,19 @@ func refreshHandler(w http.ResponseWriter, r *http.Request) {
 
 	err = json.Unmarshal(body, &req)
 	if err != nil {
-		badRequest(w)
+		badRequest(w, err)
 		return
 	}
 
 	rawRefresh, err := base64.RawURLEncoding.DecodeString(req.Refresh)
 	if err != nil {
-		badRequest(w)
+		badRequest(w, err)
 		return
 	}
 
 	rawRefresh, err = auth.DecryptToken(rawRefresh)
 	if err != nil {
-		badRequest(w)
+		badRequest(w, err)
 		return
 	}
 
@@ -126,7 +134,7 @@ func refreshHandler(w http.ResponseWriter, r *http.Request) {
 
 	valid := auth.CheckPair(req.Access, refresh)
 	if !valid {
-		unauthorized(w)
+		unauthorized(w, ErrInvalidTokenPair)
 		return
 	}
 
@@ -145,31 +153,34 @@ func refreshHandler(w http.ResponseWriter, r *http.Request) {
 
 	result := q(db)
 	if result.Error != nil {
-		unauthorized(w)
+		unauthorized(w, err)
 		return
 	}
 
 	if !user.RefreshKey.Valid {
-		unauthorized(w)
+		unauthorized(w, ErrNoRefreshAvailable)
 		return
 	}
 
 	rawHash, err := base64.RawURLEncoding.DecodeString(user.RefreshKey.String)
 	if err != nil {
-		internalServerError(w)
+		internalServerError(w, err)
 		return
 	}
 
-	valid = auth.Validate(rawRefresh, rawHash)
+	valid, err = auth.Validate(rawRefresh, rawHash)
+	if err != nil {
+		internalServerError(w, err)
+	}
 	if !valid {
-		unauthorized(w)
+		unauthorized(w, ErrInvalidRefresh)
 		return
 	}
 
 	if ip != refresh.Ip {
 		err = mailer.SendIpWarning(user.Email, ip)
 		if err != nil {
-			internalServerError(w)
+			internalServerError(w, err)
 			return
 		}
 	}
@@ -177,25 +188,25 @@ func refreshHandler(w http.ResponseWriter, r *http.Request) {
 	var access string
 	access, refresh, err = auth.GenerateTokens(ip, user)
 	if err != nil {
-		internalServerError(w)
+		internalServerError(w, err)
 		return
 	}
 
 	rawRefresh, err = json.Marshal(refresh)
 	if err != nil {
-		internalServerError(w)
+		internalServerError(w, err)
 		return
 	}
 
 	encrypted, err := auth.EncryptToken(rawRefresh)
 	if err != nil {
-		internalServerError(w)
+		internalServerError(w, err)
 		return
 	}
 
 	hashed, err := auth.HashToken(rawRefresh)
 	if err != nil {
-		internalServerError(w)
+		internalServerError(w, err)
 		return
 	}
 
@@ -213,19 +224,19 @@ func refreshHandler(w http.ResponseWriter, r *http.Request) {
 
 	result = q2(db)
 	if result.Error != nil {
-		internalServerError(w)
+		internalServerError(w, result.Error)
 		return
 	}
 
 	respJson, err := json.Marshal(resp)
 	if err != nil {
-		internalServerError(w)
+		internalServerError(w, err)
 		return
 	}
 
 	_, err = w.Write(respJson)
 	if err != nil {
-		internalServerError(w)
+		internalServerError(w, err)
 		return
 	}
 }
