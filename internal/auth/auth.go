@@ -5,7 +5,6 @@ import (
 	"crypto/cipher"
 	"crypto/rand"
 	"crypto/sha512"
-	_ "crypto/sha512"
 	"encoding/base64"
 	"errors"
 	"io"
@@ -13,6 +12,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	log "github.com/ploschka/auth/internal/logger"
 	"github.com/ploschka/auth/internal/model"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -49,6 +49,7 @@ type RefreshToken struct {
 }
 
 func init() {
+	log.Info("Auth init started")
 	base64SignKey, ok := os.LookupEnv("SIGN_KEY")
 	if !ok || len(base64SignKey) == 0 {
 		panic("SIGN_KEY is undefined or emty")
@@ -85,6 +86,7 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
+	log.Info("Auth init ended")
 }
 
 func EncryptToken(token []byte) ([]byte, error) {
@@ -124,23 +126,28 @@ func CheckPair(access string, refresh *RefreshToken) bool {
 
 	token, err := jwt.ParseWithClaims(access, &claims{}, keyfunc, jwt.WithValidMethods(allowedMethods[:]))
 	if err != nil {
+		log.Debug("CheckPair cannot parse access token")
 		return false
 	}
 
-	myclaims, ok := token.Claims.(claims)
+	myclaims, ok := token.Claims.(*claims)
 	if !ok {
+		log.Debug("CheckPair claim type cast fail")
 		return false
 	}
 
 	if myclaims.Ip != refresh.Ip {
+		log.Debug("CheckPair ip mismatch")
 		return false
 	}
 
 	if base64.RawURLEncoding.EncodeToString(token.Signature) != refresh.Signature {
+		log.Debug("CheckPair signature mismatch")
 		return false
 	}
 
 	if myclaims.IssuedAt.Unix() != refresh.IssuedAt {
+		log.Debug("Checkpair issued time mismatch")
 		return false
 	}
 
@@ -151,6 +158,7 @@ func Validate(tok []byte, hash []byte) (bool, error) {
 	hasher := sha512.New()
 	_, err := hasher.Write(tok)
 	if err != nil {
+		log.Debug("Validate hash write error")
 		return false, err
 	}
 	toksum := hasher.Sum(nil)
@@ -179,12 +187,14 @@ func GenerateTokens(ip string, user model.User) (access string, refresh *Refresh
 
 	strtok, err = aToken.SigningString()
 	if err != nil {
+		log.Debug("GenerateTokens signing string get error")
 		return
 	}
 
 	var signature []byte
 	signature, err = aToken.Method.Sign(strtok, signKey)
 	if err != nil {
+		log.Debug("GenerateTokens sign error")
 		return
 	}
 

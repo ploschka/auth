@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/ploschka/auth/internal/auth"
+	log "github.com/ploschka/auth/internal/logger"
 	"github.com/ploschka/auth/internal/mailer"
 	"github.com/ploschka/auth/internal/model"
 	"gorm.io/gorm"
@@ -22,6 +23,8 @@ var (
 )
 
 func authHandler(w http.ResponseWriter, r *http.Request) {
+	log.Info(r.RequestURI)
+	log.Info(r.RemoteAddr)
 	guid := r.URL.Query().Get("guid")
 	if len(guid) == 0 {
 		badRequest(w, ErrGuidLength)
@@ -100,9 +103,12 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
 		internalServerError(w, err)
 		return
 	}
+	log.Info(http.StatusOK)
 }
 
 func refreshHandler(w http.ResponseWriter, r *http.Request) {
+	log.Info(r.RequestURI)
+	log.Info(r.RemoteAddr)
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		internalServerError(w, err)
@@ -239,4 +245,5 @@ func refreshHandler(w http.ResponseWriter, r *http.Request) {
 		internalServerError(w, err)
 		return
 	}
+	log.Info(http.StatusOK)
 }
