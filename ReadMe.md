@@ -10,12 +10,19 @@
     POSTGRES_USER=app # Имя пользователя базы данных
     SIGN_KEY=c2VjcmV0X3NpZ25fa2V5 # Ключ подписи токенов в кодировке base64
     ENCRYPTION_KEY=bOVcHwoCIhSF5EM9gC15PAOY1KAm3i6h9lELYnh1BO4= # Ключ шифрования длиной 32 байта в кодировке base64
+    APP_PORT=8000 # Внешний порт приложения
+    DB_PORT=5432 # Опциональный внешний порт базы данных
     ```
 
 2. Развернуть приложение в docker в директории `deployment`
 
     ```sh
     docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+    ```
+
+    Опционально с открытыми портами базы данных
+    ```sh
+    docker compose -f docker-compose.yml -f docker-compose.override.yml -f docker-compose.prod.yml up -d
     ```
 
 ## Развёртывание в окружении разработчика
